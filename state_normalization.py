@@ -34,4 +34,6 @@ class StateNormalization(object):
         self.low_state = np.append(self.low_state, np.ones(M)*1)  # 任务截止时间的最小值，假设最小值为0
 
     def state_normal(self, state):
-        return state / (self.high_state - self.low_state)
+        denom = self.high_state - self.low_state
+        normalized = (state - self.low_state) / (denom + 1e-8)
+        return np.clip(normalized, 0.0, 1.0)

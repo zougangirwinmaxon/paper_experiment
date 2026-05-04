@@ -1,7 +1,7 @@
-import tensorflow as tf
 import numpy as np
 from openpyxl import Workbook
 import time
+import torch
 import ddpg_brain
 from env import UAVEnv
 from state_normalization import StateNormalization
@@ -46,7 +46,7 @@ sheet7.append(["每回合成功卸载到卫星的任务数"])
 #######################################################################################################################
 #用具体的环境训练ddpg智能体的参数设置
 np.random.seed(1)
-tf.set_random_seed(1)
+torch.manual_seed(1)
 np.set_printoptions(suppress=True)  # 禁止科学计数法
 MAX_EPISODES=550
 MAX_EP_STEPS = 150#每个回合的最大步数150
