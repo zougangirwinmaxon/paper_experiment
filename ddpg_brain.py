@@ -25,11 +25,13 @@ class DDPG(object):
         self.S = tf.placeholder(tf.float32, [None, s_dim], 's')  # 输入
         self.S_ = tf.placeholder(tf.float32, [None, s_dim], 's_')
         self.R = tf.placeholder(tf.float32, [None, 1], 'r')
+        self.A = tf.placeholder(tf.float32, [None, a_dim], 'a_input')
         with tf.variable_scope('Actor'):
             self.a = self._build_a(self.S, scope='eval', trainable=True)
             a_ = self._build_a(self.S_, scope='target', trainable=False)
         with tf.variable_scope('Critic'):
             q = self._build_c(self.S, self.a, scope='eval', trainable=True)
+            q_eval = self._build_c(self.S, self.A, scope='eval', trainable=True, reuse=True)
             q_ = self._build_c(self.S_, a_, scope='target', trainable=False)
         self.ae_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='Actor/eval')
         self.at_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='Actor/target')
@@ -43,7 +45,7 @@ class DDPG(object):
         #定义训练评估网络
         q_target = self.R + GAMMA * q_
         # in the feed_dic for the td_error, the self.a should change to actions in memory
-        td_error = tf.losses.mean_squared_error(labels=q_target, predictions=q)
+        td_error = tf.losses.mean_squared_error(labels=q_target, predictions=q_eval)
         self.ctrain = tf.train.AdamOptimizer(LR_C).minimize(td_error, var_list=self.ce_params)
 
         #定义训练策略网络
@@ -74,7 +76,7 @@ class DDPG(object):
         br = bt[:, -self.s_dim - 1: -self.s_dim]
         bs_ = bt[:, -self.s_dim:]
         self.sess.run(self.atrain, {self.S: bs})
-        self.sess.run(self.ctrain, {self.S: bs, self.a: ba, self.R: br, self.S_: bs_})
+        self.sess.run(self.ctrain, {self.S: bs, self.A: ba, self.R: br, self.S_: bs_})
 
     #定义经验回放池
     def store_transition(self, s, a, r, s_):
@@ -93,8 +95,8 @@ class DDPG(object):
             return tf.multiply(a, self.a_bound[1], name='scaled_a')
 
     #定义评估网络结构
-    def _build_c(self, s, a, scope, trainable):
-        with tf.variable_scope(scope):
+    def _build_c(self, s, a, scope, trainable, reuse=False):
+        with tf.variable_scope(scope, reuse=reuse):
             n_l1 = 400
             w1_s = tf.get_variable('w1_s', [self.s_dim, n_l1], trainable=trainable)
             w1_a = tf.get_variable('w1_a', [self.a_dim, n_l1], trainable=trainable)
